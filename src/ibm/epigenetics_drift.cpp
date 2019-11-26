@@ -30,6 +30,8 @@ using namespace std;
 int seed = get_nanoseconds();
 mt19937 rng_r{static_cast<long unsigned int>(seed)};
 uniform_real_distribution<> uniform(0.0,1.0);
+// sample alleles from diploids with probability 0.5
+bernoulli_distribution allele_sample(0.5);
 
 // parameters & variables:
 // a lot of the parameters declared here will be overridden
@@ -122,34 +124,65 @@ void write_parameters(ofstream &DataFile)
 // list of the data headers at the start of the file
 void write_data_headers(ofstream &DataFile)
 {
-    DataFile 
-        << "generation;" 
-        << "freq_G;" 
-        << endl; 
-}
-
-// write data both for winter and summer populations
-void write_stats(ofstream &DataFile, int generation, int timestep)
-{
-    double freq_G;
-    double ss_freq_G; // between patch variance in G
-
-    // store frequencies of combinations of epialles
-    // one can have four different genotypes
-    // gg, Gg, gG, GG (yes we do track maternal and paternal separately,
-    // to maintain a connection with epigenotype in the next array subset
-    // 
-    // one can have four different epigenotypes
-    // ww, wz, zw, zz
-    double epigenotype[4][4];
-
-    for (int gen = 0; gen < 4; ++gen)
+    DataFile << "generation;";
+    
+    for (int allele_1 = 0; allele_1 < 2; ++allele_1)
     {
-        for (int epigen = 0; epigen < 4; ++epigen)
+        for (int allele_2 = 0; allele_2 < 2; ++allele_2)
         {
-            epigenotype[gen][epigen] = 0.0;
+            for (int epi_allele_1 = 0; epi_allele_1 < 2; ++epi_allele_1)
+            {
+                for (int epi_allele_2 = 0; epi_allele_2 < 2; ++epi_allele_2)
+                {
+                    DataFile << "freq_" << (allele_1 == 0 ? "g" : "G") <<  (epi_allele_1 == 0 ? "w" : "z") << (allele_2 == 0 ? "g" : "G") << (epi_allele_2 == 0 ? "w" : "z") << ";";
+                }
+            }
         }
     }
+
+    DataFile << "freq_w;freq_g;";
+
+    for (int envt_i = 0; envt_i < 2; ++envt_i)
+    {
+        DataFile 
+            << "mean_mu_w_z_" << (envt_i == 0 ? "B" : "A") << ";"
+            << "var_mu_w_z_" << (envt_i == 0 ? "B" : "A") << ";"
+            << "mean_mu_z_w_" << (envt_i == 0 ? "B" : "A") << ";"
+            << "var_mu_z_w_" << (envt_i == 0 ? "B" : "A") << ";" << endl;
+    }
+
+    DataFile << "freq_A;mean_surviving_breeders;" << endl;
+} // void write_data_headers(ofstream &DataFile)
+
+
+
+// write data both for winter and summer populations
+void write_stats(ofstream &DataFile, int generation)
+{
+    // store frequencies of combinations of alleles and epialles
+    int epigenotype_freq[2][2][2][2];
+
+    // quadro-for-loop to initialize frequencies to 0
+    for (int allele_1 = 0; allele_1 < 2; ++allele_1)
+    {
+        for (int allele_2 = 0; allele_2 < 2; ++allele_2)
+        {
+            for (int epi_allele_1 = 0; epi_allele_1 < 2; ++epi_allele_1)
+            {
+                for (int epi_allele_2 = 0; epi_allele_2 < 2; ++epi_allele_2)
+                {
+                    epigenotype_freq[allele_1][allele_2][epi_allele_1][epi_allele_2] = 0;
+                }
+            }
+        }
+    }
+
+    double mean_modifier_w_z[2] = { 0.0, 0.0 };
+    double mean_modifier_z_w[2] = { 0.0, 0.0 };
+    double ss_modifier_w_z[2] = { 0.0, 0.0 };
+    double ss_modifier_z_w[2] = { 0.0, 0.0 };
+
+    double freq_A;
 
     int total_breeders = 0;
 
@@ -159,15 +192,104 @@ void write_stats(ofstream &DataFile, int generation, int timestep)
 
         total_breeders += nbreeders;
 
+        freq_A += Pop[patch_i].envt_state_is_A;
+
         for (int breeder_i = 0; breeder_i < nbreeders; ++breeder_i)
         {
-            Pop[patch_i].breeders[breeder_i].allele[0] 
+            ++epigenotype_freq[
+                Pop[patch_i].breeders[breeder_i].genotype[0]
+                ][
+                Pop[patch_i].breeders[breeder_i].genotype[1]
+                ][
+                Pop[patch_i].breeders[breeder_i].epigenotype[0]
+                ][
+                Pop[patch_i].breeders[breeder_i].epigenotype[1]
+                ];
 
-            epigenotype
+            for (int envt_i = 0; envt_i < 2; ++envt_i)
+            {
+                val =  0.5 * (
+                            Pop[patch_i].breeders[breeder_i].modifier_w_z[envt_i][0]
+                            +
+                            Pop[patch_i].breeders[breeder_i].modifier_w_z[envt_i][1]
+                          );
+
+                mean_modifier_w_z[envt_i] += val;
+                ss_modifier_w_z[envt_i] += val * val;
+
+                val =  0.5 * (
+                            Pop[patch_i].breeders[breeder_i].modifier_z_w[envt_i][0]
+                            +
+                            Pop[patch_i].breeders[breeder_i].modifier_z_w[envt_i][1]
+                          );
+
+                mean_modifier_z_w[envt_i] += val;
+                ss_modifier_z_w[envt_i] += val * val;
+            }
         } //end for int breeder_i
     } // end for int patch_i
 
-}
+
+    DataFile << generation << ";";
+
+    double freq_g = 0.0;
+    double freq_w = 0.0;
+
+    for (int allele_1 = 0; allele_1 < 2; ++allele_1)
+    {
+        for (int allele_2 = 0; allele_2 < 2; ++allele_2)
+        {
+            for (int epi_allele_1 = 0; epi_allele_1 < 2; ++epi_allele_1)
+            {
+                for (int epi_allele_2 = 0; epi_allele_2 < 2; ++epi_allele_2)
+                {
+                    mean_freq = (double) epigenotype_freq[allele_1][allele_2][epi_allele_1][epi_allele_2] / total_breeders;
+
+                    DataFile << mean_freq << ";";
+
+                    if (allele_1 == g)
+                    {
+                        freq_g += 0.5 * mean_freq; 
+                    }
+
+                    if (allele_2 == g)
+                    {
+                        freq_g += 0.5 * mean_freq; 
+                    }
+                    
+                    if (epi_allele_1 == w)
+                    {
+                        freq_w += 0.5 * mean_freq; 
+                    }
+
+                    if (epi_allele_2 == w)
+                    {
+                        freq_w += 0.5 * mean_freq; 
+                    }
+                }
+            }
+        }
+    }
+
+    DataFile << freq_w << ";" << freq_g << ";";
+
+    double mean, var;
+
+    for (int envt_i = 0; envt_i < 2; ++envt_i)
+    {
+        mean = mean_modifier_w_z[envt_i] / total_breeders;
+        var =  ss_modifier_w_z[envt_i] / total_breeders - mean * mean;
+
+        DataFile << mean << ";" << var << ";";
+        
+        mean = mean_modifier_z_w[envt_i] / total_breeders;
+        var =  ss_modifier_z_w[envt_i] / total_breeders - mean * mean;
+
+        DataFile << mean << ";" << var << ";";
+    }
+
+    DataFile << freq_A / NPatches << ";" << (double) total_breeders / NPatches << ";" << endl;
+} // void write_stats(ofstream &DataFile, int generation, int timestep)
 
 // initialize the population 
 // at the start of the simulation
@@ -274,14 +396,65 @@ double fitness_payoff(
 void create_offspring(Individual &mother
         ,Individual &father
         ,Individual &offspring
-        ,bool const offspring_envt_high
-        ,double const phen_prestige_vert
-        ,double const xconformist_vert
-        )
+        ,bool envt_is_A)
 {
+    // first inherit the modifiers
+    for (int allele_i = 0; allele_i < 2; ++allele_i)
+    {
 
-}
- // end create_offspring()
+    }
+
+
+    Allele parental_allele;
+    EpiAllele parental_epiallele;
+
+    for (int allele_i = 0; allele_i < 2; ++allele_i)
+    {
+        // inherit G alleles from mom or dad,
+        // sample from random parental chromosome
+        int parental_chromosome = allele_sample(rng_r);
+        
+        parental_allele = allele_i == 0 ? 
+            mother.genotype[parental_chromosome]
+            :
+            father.genotype[parental_chromosome];
+
+        // mutate parental allele
+        if (uniform(rng_r) < mu_g)
+        {
+            parental_allele = !parental_allele;
+        }
+
+        offspring.genotype[allele_i] = parental_allele;
+
+        // now the epialleles
+        parental_epiallele = allele_i == 0 ? 
+            mother.epigenotype[parental_chromosome]
+            :
+            father.epigenotype[parental_chromosome];
+
+        if (parental_epiallele == w)
+        {
+            if (uniform(rng_r) < 0.5 * (
+                        offspring.modifier_w_z[envt_is_A][0]
+                        +
+                        offspring.modifier_w_z[envt_is_A][1]))
+            {
+                parental_epiallele = !parental_epiallele;
+            }
+        } else
+        {
+            if (uniform(rng_r) < 0.5 * (
+                        offspring.modifier_z_w[envt_is_A][0]
+                        +
+                        offspring.modifier_z_w[envt_is_A][1]))
+            {
+                parental_epiallele = !parental_epiallele;
+            }
+        }
+
+    } // end for allele_i
+} // end create_offspring()
 
 void adult_survival()
 {
@@ -392,7 +565,8 @@ void replace()
                 create_offspring(
                         Pop[patch_parents].breeders[breeder_sampler(rng_r)]
                         ,Pop[patch_parents].breeders[breeder_sampler(rng_r)]
-                        ,kid);
+                        ,kid
+                        ,Pop[patch_i].envt_state_is_A);
 
                 // add kid to the stack of future breeders
                 Pop[patch_i].breeders_t1.append(kid);
