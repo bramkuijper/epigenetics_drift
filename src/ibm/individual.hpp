@@ -8,12 +8,12 @@
 enum Allele {
     g = 0, // inactive
     G = 1 // active
-}
+};
 
 enum EpiAllele {
     w = 0, // inactive
-    z = 1, // active
-}
+    z = 1 // active
+};
 
 class Individual
 {

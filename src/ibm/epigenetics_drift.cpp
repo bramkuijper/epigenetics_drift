@@ -101,7 +101,15 @@ Patch Pop[NPatches];
 // running the executable file
 void init_arguments(int argc, char **argv)
 {
-
+    mu_mu = atof(argv[1]);
+    sdmu_mu = atof(argv[2]);
+    mu_g = atof(argv[3]);
+    envt_switch[0] = atof(argv[4]);
+    envt_switch[1] = atof(argv[5]);
+    sA = atof(argv[6]);
+    sB = atof(argv[7]);
+    d = atof(argv[8]);
+    h = atof(argv[9]);
 
 }
 
@@ -109,15 +117,15 @@ void init_arguments(int argc, char **argv)
 void write_parameters(ofstream &DataFile)
 {
     DataFile << endl << endl
-        "mu_mu;" << mu_mu << endl
-        "sdmu_mu;" << sdmu_mu << endl
-        "mu_g;" << mu_g << endl
-        "sigma_BA;" << envt_switch[0] << endl
-        "sigma_AB;" << envt_switch[1] << endl
-        "sA;" << sA << endl
-        "sB;" << sB << endl
-        "d;" << d << endl;
-        "h;" << h << endl;
+        << "mu_mu;" << mu_mu << endl
+        << "sdmu_mu;" << sdmu_mu << endl
+        << "mu_g;" << mu_g << endl
+        << "sigma_BA;" << envt_switch[0] << endl
+        << "sigma_AB;" << envt_switch[1] << endl
+        << "sA;" << sA << endl
+        << "sB;" << sB << endl
+        << "d;" << d << endl
+        << "h;" << h << endl;
 } // void write_parameters(ofstream &DataFile)
 
 
@@ -186,6 +194,10 @@ void write_stats(ofstream &DataFile, int generation)
 
     int total_breeders = 0;
 
+    double val;
+
+    int nbreeders;
+
     for (int patch_i = 0; patch_i < NPatches; ++patch_i)
     {
         nbreeders = Pop[patch_i].breeders.size();
@@ -234,6 +246,8 @@ void write_stats(ofstream &DataFile, int generation)
 
     double freq_g = 0.0;
     double freq_w = 0.0;
+
+    double mean_freq;
 
     for (int allele_1 = 0; allele_1 < 2; ++allele_1)
     {
@@ -331,7 +345,7 @@ void init_population()
                 } // for (int envt_i =
             } // end for (int allele_i
 
-            Pop[patch_i].breeders.append(ind_init);
+            Pop[patch_i].breeders.push_back(ind_init);
         } // end for (int breeder_i
 
         // we should have initilized NBreeder individuals in this patch
@@ -379,7 +393,7 @@ double fitness_payoff(
             val = envt_A ? 1.0 - h * sA : 1.0 - h * sB;
             break;
         case 2: // 2 active alleles, which fit envt A
-            val = envt_A ? 1.0; 1.0 - sB;
+            val = envt_A ? 1.0 : 1.0 - sB;
             break;
         default:
             cout << "something goes quite horrifically wrong with the number of active alleles and the survival function. Abort." << endl;
@@ -401,7 +415,22 @@ void create_offspring(Individual &mother
     // first inherit the modifiers
     for (int allele_i = 0; allele_i < 2; ++allele_i)
     {
+        for (int envt_i = 0; envt_i < 2; ++envt_i)
+        {
+            int parental_chromosome = allele_sample(rng_r);
 
+            // inherit first allele from mother the other from father
+            offspring.modifier_z_w[envt_i][allele_i] = allele_i == 0 ?
+                mother.modifier_z_w[envt_i][parental_chromosome]
+                :
+                father.modifier_z_w[envt_i][parental_chromosome];
+            
+            // inherit first allele from mother the other from father
+            offspring.modifier_w_z[envt_i][allele_i] = allele_i == 0 ?
+                mother.modifier_w_z[envt_i][parental_chromosome]
+                :
+                father.modifier_w_z[envt_i][parental_chromosome];
+        }
     }
 
 
@@ -422,7 +451,7 @@ void create_offspring(Individual &mother
         // mutate parental allele
         if (uniform(rng_r) < mu_g)
         {
-            parental_allele = !parental_allele;
+            parental_allele = (Allele)!parental_allele;
         }
 
         offspring.genotype[allele_i] = parental_allele;
@@ -440,7 +469,7 @@ void create_offspring(Individual &mother
                         +
                         offspring.modifier_w_z[envt_is_A][1]))
             {
-                parental_epiallele = !parental_epiallele;
+                parental_epiallele = (EpiAllele)!parental_epiallele;
             }
         } else
         {
@@ -449,7 +478,7 @@ void create_offspring(Individual &mother
                         +
                         offspring.modifier_z_w[envt_is_A][1]))
             {
-                parental_epiallele = !parental_epiallele;
+                parental_epiallele = (EpiAllele)!parental_epiallele;
             }
         }
 
@@ -473,7 +502,9 @@ void adult_survival()
     {
         envt_is_A = Pop[patch_i].envt_state_is_A;
 
-        for (int breeder_i = 0; breeder_i < Pop[patch_i].breeders[breeder_i].size(); ++breeder_i)
+        for (int breeder_i = 0; 
+                breeder_i < Pop[patch_i].breeders.size(); 
+                ++breeder_i)
         {
             // count the number of alleles who are active
             int n_active_alleles = 0;
@@ -496,8 +527,8 @@ void adult_survival()
             if (uniform(rng_r) < fitness_payoff(n_active_alleles, envt_is_A))
             {
                 // remove breeder from the stack
-                Pop[patch_i].breeders[breeder_i].erase(
-                        Pop[patch_i].breeders[breeder_i].begin() + breeder_i);
+                Pop[patch_i].breeders.erase(
+                        Pop[patch_i].breeders.begin() + breeder_i);
 
                 --breeder_i;
             }
@@ -518,13 +549,12 @@ void replace()
     // which will be rounded to a biologically 
     // relevant number of offspring later
     double clutch_d;
-    bool envt_is_A;
 
     int clutch_i;
 
     for (int patch_i = 0; patch_i < NPatches; ++patch_i)
     {
-        for (int kid_i = 0; kid_i < NBreeders; ++kid_i)
+        for (int kid_i = 0; kid_i < NBreeder; ++kid_i)
         {
 
             // get lowest integer clutch size from the floating point
@@ -569,7 +599,7 @@ void replace()
                         ,Pop[patch_i].envt_state_is_A);
 
                 // add kid to the stack of future breeders
-                Pop[patch_i].breeders_t1.append(kid);
+                Pop[patch_i].breeders_t1.push_back(kid);
 
             } // end for (int egg_i = 0;
         } // end for (int breeder_i = 0
@@ -621,13 +651,11 @@ int main(int argc, char **argv)
 
         if (generation % data_nth_generation == 0)
         {
-            write_stats(DataFile, generation, 2);
+            write_stats(DataFile, generation);
         }
     }
             
-    write_stats(DataFile, generation, 2);
+    write_stats(DataFile, generation);
 
-    write_dist(DataFileDist);
-    
     write_parameters(DataFile);
 }
