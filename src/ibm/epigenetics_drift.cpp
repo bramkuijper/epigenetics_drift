@@ -156,7 +156,7 @@ void write_data_headers(ofstream &DataFile)
             << "mean_mu_w_z_" << (envt_i == 0 ? "B" : "A") << ";"
             << "var_mu_w_z_" << (envt_i == 0 ? "B" : "A") << ";"
             << "mean_mu_z_w_" << (envt_i == 0 ? "B" : "A") << ";"
-            << "var_mu_z_w_" << (envt_i == 0 ? "B" : "A") << ";" << endl;
+            << "var_mu_z_w_" << (envt_i == 0 ? "B" : "A") << ";";
     }
 
     DataFile << "freq_A;mean_surviving_breeders;" << endl;
