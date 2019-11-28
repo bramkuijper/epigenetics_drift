@@ -28,7 +28,7 @@ using namespace std;
 
 // C++ random number generation
 int seed = get_nanoseconds();
-mt19937 rng_r{static_cast<long unsigned int>(seed)};
+mt19937 rng_r{static_cast<unsigned int>(seed)};
 uniform_real_distribution<> uniform(0.0,1.0);
 // sample alleles from diploids with probability 0.5
 bernoulli_distribution allele_sample(0.5);
@@ -539,9 +539,7 @@ void adult_survival()
  
 
 // births of new offspring
-// juvenile cue integration
-// juvenile selection
-// adult cue integration (aka horizontal social learning)
+// and environmental change
 void replace()
 {
     // auxiliary variable to keep track 
@@ -554,54 +552,53 @@ void replace()
 
     for (int patch_i = 0; patch_i < NPatches; ++patch_i)
     {
+        // environmental change
+        if (uniform(rng_r) < envt_switch[Pop[patch_i].envt_state_is_A])
+        {
+            Pop[patch_i].envt_state_is_A = !Pop[patch_i].envt_state_is_A;
+        }
+
         for (int kid_i = 0; kid_i < NBreeder; ++kid_i)
         {
+            // make new offspring
+            Individual kid;
 
-            // get lowest integer clutch size from the floating point
-            // value
-            clutch_i = floor(clutch_d);
+            // auxiliary variable 
+            // storing the patch from which this offspring's 
+            // parents came from
+            int patch_parents = patch_i;
 
-            // of course, when rounding to the lowest integer, there is a 0<=remainder<=1
-            // we draw a random number to see whether this remainder is an additional
-            //
-            if (uniform(rng_r) < clutch_d - clutch_i)
+            // ok parents from a different patch
+            if (uniform(rng_r) < d || Pop[patch_i].breeders.size() == 0)
             {
-                ++clutch_i;
+                do {
+                        patch_parents = random_patch(rng_r);
+                }
+                while (Pop[patch_parents].breeders.size() == 0);
             }
 
-            // make offspring
-            for (int egg_i = 0; egg_i < clutch_i; ++clutch_i)
-            {
-                // make new offspring
-                Individual kid;
+            assert(Pop[patch_parents].breeders.size() >= 0);
+            assert(Pop[patch_parents].breeders.size() <= NBreeder);
 
-                // decide whether new offspring is immigrant
-                // to the patch or not. If immigrant,
-                // sample both parents from randomly chosen patch
-                // (including the current patch with a probability 
-                // of 1/NPatches)
-                int patch_parents = uniform(rng_r) < d ? random_patch(rng_r) : patch_i;
-
-                // generate a random sampler for this number of breeders
-                uniform_int_distribution<> breeder_sampler(
-                        0,
-                        Pop[patch_parents].breeders.size() - 1);
+            // generate a random sampler for this number of breeders
+            uniform_int_distribution<> breeder_sampler(
+                    0,
+                    Pop[patch_parents].breeders.size() - 1);
 
 
-                // inherit genes epigenes 
-                // to offspring from parents,
-                // where parents are randomly sampled
-                // either locally or from a remote patch
-                create_offspring(
-                        Pop[patch_parents].breeders[breeder_sampler(rng_r)]
-                        ,Pop[patch_parents].breeders[breeder_sampler(rng_r)]
-                        ,kid
-                        ,Pop[patch_i].envt_state_is_A);
+            // inherit genes epigenes 
+            // to offspring from parents,
+            // where parents are randomly sampled
+            // either locally or from a remote patch
+            create_offspring(
+                    Pop[patch_parents].breeders[breeder_sampler(rng_r)]
+                    ,Pop[patch_parents].breeders[breeder_sampler(rng_r)]
+                    ,kid
+                    ,Pop[patch_i].envt_state_is_A);
 
-                // add kid to the stack of future breeders
-                Pop[patch_i].breeders_t1.push_back(kid);
+            // add kid to the stack of future breeders
+            Pop[patch_i].breeders_t1.push_back(kid);
 
-            } // end for (int egg_i = 0;
         } // end for (int breeder_i = 0
     } // end for (int patch_i = 0
 
@@ -613,6 +610,8 @@ void replace()
         // clear the next-gen vector as otherwise 
         // there'll be trouble
         Pop[patch_i].breeders_t1.clear();
+
+        assert(Pop[patch_i].breeders.size() == NBreeder);
     }
 } // end replace()
 
