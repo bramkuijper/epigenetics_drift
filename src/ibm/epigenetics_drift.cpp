@@ -190,7 +190,7 @@ void write_stats(ofstream &DataFile, int generation)
     double ss_modifier_w_z[2] = { 0.0, 0.0 };
     double ss_modifier_z_w[2] = { 0.0, 0.0 };
 
-    double freq_A;
+    double freq_A = 0.0;
 
     int total_breeders = 0;
 
@@ -346,6 +346,9 @@ void init_population()
             } // end for (int allele_i
 
             Pop[patch_i].breeders.push_back(ind_init);
+
+            // see whether assignment happens properly
+            assert(Pop[patch_i].breeders[Pop[patch_i].breeders.size() - 1].epigenotype[0] == z);
         } // end for (int breeder_i
 
         // we should have initilized NBreeder individuals in this patch
@@ -481,6 +484,8 @@ void create_offspring(Individual &mother
                 parental_epiallele = (EpiAllele)!parental_epiallele;
             }
         }
+        
+        offspring.epigenotype[allele_i] = parental_epiallele;
 
     } // end for allele_i
 } // end create_offspring()
@@ -542,14 +547,6 @@ void adult_survival()
 // and environmental change
 void replace()
 {
-    // auxiliary variable to keep track 
-    // of floating value of clutch size
-    // which will be rounded to a biologically 
-    // relevant number of offspring later
-    double clutch_d;
-
-    int clutch_i;
-
     for (int patch_i = 0; patch_i < NPatches; ++patch_i)
     {
         // environmental change
