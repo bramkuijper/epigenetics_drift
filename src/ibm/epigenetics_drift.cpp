@@ -415,6 +415,9 @@ void create_offspring(Individual &mother
         ,Individual &offspring
         ,bool envt_is_A)
 {
+    // temporary value for modifier 
+    double inherited_allele;
+
     // first inherit the modifiers
     for (int allele_i = 0; allele_i < 2; ++allele_i)
     {
@@ -422,17 +425,24 @@ void create_offspring(Individual &mother
         {
             int parental_chromosome = allele_sample(rng_r);
 
-            // inherit first allele from mother the other from father
-            offspring.modifier_z_w[envt_i][allele_i] = allele_i == 0 ?
+            inherited_allele = allele_i == 0 ?
                 mother.modifier_z_w[envt_i][parental_chromosome]
                 :
                 father.modifier_z_w[envt_i][parental_chromosome];
-            
+
             // inherit first allele from mother the other from father
-            offspring.modifier_w_z[envt_i][allele_i] = allele_i == 0 ?
+            offspring.modifier_z_w[envt_i][allele_i] = 
+                mutation(inherited_allele, mu_mu, sdmu_mu);
+
+
+            // inherit first allele from mother the other from father
+            inherited_allele = allele_i == 0 ?
                 mother.modifier_w_z[envt_i][parental_chromosome]
                 :
                 father.modifier_w_z[envt_i][parental_chromosome];
+
+            offspring.modifier_w_z[envt_i][allele_i] = 
+                mutation(inherited_allele, mu_mu, sdmu_mu);
         }
     }
 
