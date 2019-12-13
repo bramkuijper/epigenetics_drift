@@ -434,7 +434,7 @@ void create_offspring(Individual &mother
             offspring.modifier_z_w[envt_i][allele_i] = 
                 mutation(inherited_allele, mu_mu, sdmu_mu);
 
-            clamp(offspring.modifier_w_z[envt_i][allele_i], 0.0, 1.0);
+            clamp(offspring.modifier_z_w[envt_i][allele_i], 0.0, 1.0);
 
             // inherit first allele from mother the other from father
             inherited_allele = allele_i == 0 ?
