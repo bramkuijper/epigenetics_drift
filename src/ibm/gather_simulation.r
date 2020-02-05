@@ -91,7 +91,14 @@ last_line_data <- function(filename)
         # this is the last line of the data frame
         if (length(grep("^\\d",f[[line_i]])) > 0)
         {
-            return(line_i)
+            if (line_i == length(f))
+            {
+                return(NA)
+            }
+            else
+            {
+                return(line_i)
+            }
         }
     }
 
@@ -135,7 +142,7 @@ gather.sims <- function(directory = "."
     big.dataframe.all.sims <- NULL
 
     # loop through all the files in the list of files
-    for (i in range(1,length(all.simulation.files)))
+    for (i in seq(1,length(all.simulation.files)))
     {
         file_i <- all.simulation.files[[i]]
 
