@@ -67,7 +67,7 @@ int NBreeder = 100;
 
 // number of generations
 //int number_generations = 75000;
-int number_generations = 50000;
+int number_generations = 1000;
 
 // environmental switch rate
 //
