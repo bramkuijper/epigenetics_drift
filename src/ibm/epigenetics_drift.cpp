@@ -1,5 +1,22 @@
-// Extending Leimar & McNamara's cue integration model
-// to include cultural transmission
+// local adaptation of active alleles (adapted to envt A)
+// and inactive alleles (adapted to envt B)
+//
+// allelic action is affected by epimutations who can make active alleles
+// inactive. The w epigenetic modifier is inactive, whereas the z epigenetic
+// modifier is active. 
+//
+// Hence:   G z: active (A)
+//          G w: inactive (B)
+//          g z: inactive (B)
+//          g w: inactive (B)
+//
+//
+//
+// These epimutations are applied or removed by an epigenetic
+// modifier. 
+//
+//
+
 // Bram Kuijper 
 // 2019
 //
@@ -50,7 +67,7 @@ int NBreeder = 100;
 
 // number of generations
 //int number_generations = 75000;
-int number_generations = 100;
+int number_generations = 50000;
 
 // environmental switch rate
 //
@@ -648,6 +665,14 @@ int main(int argc, char **argv)
 
     // auxiliary variable to store current generation
     int generation;
+
+    // cout test
+    // Individual testInd();
+
+    // testInd.genotype[0] = G;
+    // testInd.genotype[1] = G;
+    // testInd.epigenotype[0] = z;
+    // testInd.epigenotype[1] = z;
 
     for (generation = 0; generation < number_generations; ++generation)
     {
