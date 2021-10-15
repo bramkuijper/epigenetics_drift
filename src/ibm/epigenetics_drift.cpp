@@ -679,15 +679,15 @@ int main(int argc, char **argv)
         // survival of adult breeders followed by reproduction
         adult_survival();
 
+        if (generation % data_nth_generation == 0)
+        {
+            write_stats(DataFile, generation);
+        }
         // new breeder establishment, 
         // followed by horizontal learning
         // and finally enviromental change
         replace();
 
-        if (generation % data_nth_generation == 0)
-        {
-            write_stats(DataFile, generation);
-        }
     }
             
     write_stats(DataFile, generation);
