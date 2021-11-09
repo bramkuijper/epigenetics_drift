@@ -559,7 +559,8 @@ void adult_survival()
             assert(n_active_alleles <= 2);
 
 
-            // have individual die or not
+            // with probability w an individual stays alive
+            // with probability 1-w it dies, the latter applies here
             if (uniform(rng_r) > fitness_payoff(n_active_alleles, envt_is_A))
             {
                 // remove breeder from the stack
