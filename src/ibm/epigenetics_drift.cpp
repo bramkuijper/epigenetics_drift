@@ -560,7 +560,7 @@ void adult_survival()
 
 
             // have individual die or not
-            if (uniform(rng_r) < fitness_payoff(n_active_alleles, envt_is_A))
+            if (uniform(rng_r) > fitness_payoff(n_active_alleles, envt_is_A))
             {
                 // remove breeder from the stack
                 Pop[patch_i].breeders.erase(
